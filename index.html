@@ -1,65 +1,574 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>World Cup DAKboard</title>
-    <script type="module" src="https://unpkg.com/@api-sports/api-football-widgets@3.0.0/dist/api-football-widgets/api-football-widgets.esm.js"></script>
-    <script nomodule src="https://unpkg.com/@api-sports/api-football-widgets@3.0.0/dist/api-football-widgets/api-football-widgets.js"></script>
-    
-    <style>
-        /* Dark theme styling optimized for DAKboard screens */
-        body {
-            background-color: transparent; 
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            margin: 0;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-        .widget-container {
-            width: 100%;
-            max-width: 480px; /* Adjust this to perfectly match your DAKboard block width */
-        }
-        h3 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #aaaaaa;
-            border-bottom: 1px solid #333333;
-            padding-bottom: 5px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Cup 2026 — Live</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #080b10;
+    --panel:    #0e1219;
+    --panel2:   #141820;
+    --border:   rgba(255,255,255,0.06);
+    --gold:     #d4a843;
+    --gold2:    #f0c96a;
+    --gold-bg:  rgba(212,168,67,0.1);
+    --text:     #dde2ec;
+    --muted:    #5a6272;
+    --win:      #3d9e6a;
+    --loss:     #9e3d3d;
+    --draw:     #5a6272;
+    --live:     #e84b4b;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-emblem {
+    width: 32px; height: 32px;
+    background: var(--gold-bg);
+    border: 1px solid rgba(212,168,67,0.3);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .header-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .header-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .refresh-btn {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .refresh-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+  .last-updated { font-size: 9px; color: var(--muted); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+  }
+  .tab {
+    font-family: 'Oswald', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 14px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s;
+    background: none;
+    border-top: none; border-left: none; border-right: none;
+    outline: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--gold2); border-bottom-color: var(--gold); }
+
+  /* ── Content ── */
+  .content { padding: 12px 16px; }
+
+  /* ── Loading / Error ── */
+  .state-msg {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 1px;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+  .state-msg .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 10px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Date group ── */
+  .date-group { margin-bottom: 4px; }
+  .date-header {
+    font-family: 'Oswald', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding: 8px 2px 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .date-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Fixture row ── */
+  .fixture {
+    display: grid;
+    grid-template-columns: 28px 1fr 56px 1fr 72px;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+    transition: background 0.1s;
+  }
+  .fixture:hover { background: rgba(255,255,255,0.03); }
+  .fixture.live {
+    background: rgba(232,75,75,0.06);
+    border-color: rgba(232,75,75,0.2);
+  }
+  .fixture.finished { opacity: 0.75; }
+
+  .fix-round {
+    font-size: 9px;
+    font-family: 'Oswald', sans-serif;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.2;
+  }
+  .fix-team {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text);
+    min-width: 0;
+  }
+  .fix-team.away { flex-direction: row-reverse; text-align: right; }
+  .fix-team img {
+    width: 16px; height: 11px;
+    object-fit: cover;
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+  .fix-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fix-score {
+    text-align: center;
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .fix-score.upcoming { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .fix-score .live-dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    background: var(--live);
+    border-radius: 50%;
+    margin-right: 3px;
+    animation: pulse 1.2s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .fix-meta {
+    text-align: right;
+    font-size: 9px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .fix-meta .venue { color: #3d4557; font-size: 9px; }
+  .fix-status-badge {
+    display: inline-block;
+    font-family: 'Oswald', sans-serif;
+    font-size: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-top: 1px;
+  }
+  .badge-ft { background: rgba(90,98,114,0.3); color: var(--muted); }
+  .badge-live { background: rgba(232,75,75,0.2); color: var(--live); }
+  .badge-pen { background: rgba(212,168,67,0.2); color: var(--gold); }
+
+  /* ── Standings ── */
+  .group-block { margin-bottom: 14px; }
+  .group-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold2);
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 5px 5px 0 0;
+    padding: 6px 12px;
+  }
+  .standings-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    overflow: hidden;
+  }
+  .standings-table th {
+    font-family: 'Oswald', sans-serif;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 5px 8px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel2);
+  }
+  .standings-table th.left { text-align: left; }
+  .standings-table td {
+    padding: 5px 8px;
+    text-align: center;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .standings-table tr:last-child td { border-bottom: none; }
+  .standings-table tr.qualify td { background: rgba(61,158,106,0.06); }
+  .standings-table tr.qualify-3rd td { background: rgba(212,168,67,0.05); }
+  .std-pos {
+    font-family: 'Oswald', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    width: 20px;
+  }
+  .std-team {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .std-team img { width: 16px; height: 11px; object-fit: cover; border-radius: 1px; }
+  .std-pts {
+    font-family: 'Oswald', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .form-cell { display: flex; gap: 2px; justify-content: center; }
+  .form-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .form-W { background: var(--win); }
+  .form-D { background: var(--draw); }
+  .form-L { background: var(--loss); }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── Group filter ── */
+  .group-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .gf-btn {
+    font-family: 'Oswald', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 3px 9px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .gf-btn:hover { color: var(--text); }
+  .gf-btn.active { background: var(--gold-bg); border-color: rgba(212,168,67,0.4); color: var(--gold2); }
+</style>
 </head>
 <body>
 
-    <div id="wg-api-football-config" 
-         data-key="YOUR_API_SPORTS_KEY_HERE" 
-         data-theme="dark" 
-         data-refresh="60"> 
+<div class="header">
+  <div class="header-left">
+    <div class="header-emblem">🏆</div>
+    <div>
+      <div class="header-title">World Cup 2026</div>
+      <div class="header-sub">Live data · USA · Canada · Mexico</div>
     </div>
+  </div>
+  <div class="header-right">
+    <span class="last-updated" id="last-updated"></span>
+    <button class="refresh-btn" onclick="loadAll()">↺ Refresh</button>
+  </div>
+</div>
 
-    <div class="widget-container">
-        <h3>World Cup Schedule & Scores</h3>
-        <div id="wg-api-football-fixtures" 
-             data-league="1" 
-             data-season="2026"
-             data-last="10"
-             data-next="10">
-        </div>
-    </div>
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('fixtures', this)">Fixtures</button>
+  <button class="tab" onclick="switchTab('standings', this)">Standings</button>
+</div>
 
-    <div class="widget-container">
-        <h3>Group Standings</h3>
-        <div id="wg-api-football-standings" 
-             data-league="1" 
-             data-season="2026">
-        </div>
-    </div>
+<div class="content">
+  <div id="view-fixtures" class="view active">
+    <div class="group-filter" id="round-filter"></div>
+    <div id="fixtures-body"><div class="state-msg"><div class="spinner"></div>Loading fixtures…</div></div>
+  </div>
+  <div id="view-standings" class="view">
+    <div id="standings-body"><div class="state-msg"><div class="spinner"></div>Loading standings…</div></div>
+  </div>
+</div>
 
+<script>
+const API_KEY = '9df369c4f75cac0727b15570e305359e';
+const BASE    = 'https://v3.football.api-sports.io';
+const LEAGUE  = 1;
+const SEASON  = 2026;
+
+// Simple in-memory cache to save API calls
+const cache = {};
+async function apiFetch(path) {
+  if (cache[path]) return cache[path];
+  const r = await fetch(BASE + path, {
+    headers: { 'x-apisports-key': API_KEY }
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const data = await r.json();
+  cache[path] = data;
+  return data;
+}
+
+let allFixtures = [];
+let activeRound = 'all';
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+}
+
+function formatTime(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true });
+}
+
+function statusLabel(fix) {
+  const s = fix.fixture.status.short;
+  if (['1H','2H','ET','HT','BT','P'].includes(s)) return 'live';
+  if (s === 'FT') return 'ft';
+  if (s === 'PEN') return 'pen';
+  return 'upcoming';
+}
+
+function scoreDisplay(fix) {
+  const status = statusLabel(fix);
+  const h = fix.goals.home;
+  const a = fix.goals.away;
+  if (status === 'upcoming') {
+    return `<div class="fix-score upcoming">${formatTime(fix.fixture.date)}</div>`;
+  }
+  if (status === 'live') {
+    const min = fix.fixture.status.elapsed || '';
+    return `<div class="fix-score"><span class="live-dot"></span>${h} – ${a}<br><span style="font-size:9px;color:var(--live)">${min}'</span></div>`;
+  }
+  return `<div class="fix-score">${h} – ${a}</div>`;
+}
+
+function badgeHtml(fix) {
+  const s = statusLabel(fix);
+  if (s === 'ft')  return '<span class="fix-status-badge badge-ft">FT</span>';
+  if (s === 'pen') return '<span class="fix-status-badge badge-pen">PEN</span>';
+  if (s === 'live') return '<span class="fix-status-badge badge-live">Live</span>';
+  return '';
+}
+
+function renderFixtures(fixtures) {
+  const filtered = activeRound === 'all' ? fixtures : fixtures.filter(f => f.league.round === activeRound);
+
+  const byDate = {};
+  filtered.forEach(f => {
+    const dk = formatDate(f.fixture.date);
+    if (!byDate[dk]) byDate[dk] = [];
+    byDate[dk].push(f);
+  });
+
+  if (Object.keys(byDate).length === 0) {
+    document.getElementById('fixtures-body').innerHTML = '<div class="state-msg">No fixtures found</div>';
+    return;
+  }
+
+  let html = '';
+  for (const [date, matches] of Object.entries(byDate)) {
+    html += `<div class="date-group"><div class="date-header">${date}</div>`;
+    matches.forEach(f => {
+      const status = statusLabel(f);
+      const homeFlag = f.teams.home.logo ? `<img src="${f.teams.home.logo}" alt="" onerror="this.style.display='none'">` : '';
+      const awayFlag = f.teams.away.logo ? `<img src="${f.teams.away.logo}" alt="" onerror="this.style.display='none'">` : '';
+      const roundShort = (f.league.round || '').replace('Group Stage - ', 'Grp ').replace('Round of ', 'R').replace('Quarter-finals','QF').replace('Semi-finals','SF').replace('3rd Place Final','3rd').replace('Final','F');
+      const venue = f.fixture.venue?.city || '';
+      html += `<div class="fixture ${status === 'live' ? 'live' : ''} ${status === 'ft' || status === 'pen' ? 'finished' : ''}">
+        <div class="fix-round">${roundShort}</div>
+        <div class="fix-team">${homeFlag}<span>${f.teams.home.name}</span></div>
+        ${scoreDisplay(f)}
+        <div class="fix-team away"><span>${f.teams.away.name}</span>${awayFlag}</div>
+        <div class="fix-meta">${venue ? `<div class="venue">${venue}</div>` : ''}${badgeHtml(f)}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  document.getElementById('fixtures-body').innerHTML = html;
+}
+
+function buildRoundFilter(fixtures) {
+  const rounds = [...new Set(fixtures.map(f => f.league.round))];
+  const container = document.getElementById('round-filter');
+  let html = `<button class="gf-btn active" onclick="filterRound('all',this)">All</button>`;
+  rounds.forEach(r => {
+    const label = r.replace('Group Stage - ','Grp ').replace('Round of ','R').replace('Quarter-finals','QF').replace('Semi-finals','SF').replace('3rd Place Final','3rd');
+    html += `<button class="gf-btn" onclick="filterRound('${r}',this)">${label}</button>`;
+  });
+  container.innerHTML = html;
+}
+
+function filterRound(round, btn) {
+  activeRound = round;
+  document.querySelectorAll('.gf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFixtures(allFixtures);
+}
+
+async function loadFixtures() {
+  try {
+    const data = await apiFetch(`/fixtures?league=${LEAGUE}&season=${SEASON}`);
+    allFixtures = (data.response || []).sort((a,b) => new Date(a.fixture.date) - new Date(b.fixture.date));
+    buildRoundFilter(allFixtures);
+    renderFixtures(allFixtures);
+  } catch(e) {
+    document.getElementById('fixtures-body').innerHTML = `<div class="state-msg">⚠ Could not load fixtures<br><small style="color:var(--muted);font-size:9px">${e.message}</small></div>`;
+  }
+}
+
+async function loadStandings() {
+  try {
+    const data = await apiFetch(`/standings?league=${LEAGUE}&season=${SEASON}`);
+    const groups = data.response?.[0]?.league?.standings || [];
+
+    if (!groups.length) {
+      document.getElementById('standings-body').innerHTML = '<div class="state-msg">Standings not yet available</div>';
+      return;
+    }
+
+    let html = '';
+    groups.forEach(group => {
+      const groupName = group[0]?.group || 'Group';
+      html += `<div class="group-block">
+        <div class="group-title">${groupName}</div>
+        <table class="standings-table">
+          <thead><tr>
+            <th class="left" style="width:22px">#</th>
+            <th class="left">Team</th>
+            <th>P</th><th>W</th><th>D</th><th>L</th>
+            <th>GD</th><th>Pts</th><th>Form</th>
+          </tr></thead>
+          <tbody>`;
+      group.forEach((team, i) => {
+        const qualify = i < 2 ? 'qualify' : (i === 2 ? 'qualify-3rd' : '');
+        const form = (team.form || '').split('').slice(-5);
+        const formDots = form.map(f => `<div class="form-dot form-${f}"></div>`).join('');
+        const flag = team.team.logo ? `<img src="${team.team.logo}" alt="" onerror="this.style.display='none'">` : '';
+        html += `<tr class="${qualify}">
+          <td class="std-pos">${team.rank}</td>
+          <td><div class="std-team">${flag}${team.team.name}</div></td>
+          <td>${team.all.played}</td>
+          <td>${team.all.win}</td>
+          <td>${team.all.draw}</td>
+          <td>${team.all.lose}</td>
+          <td>${team.goalsDiff > 0 ? '+' : ''}${team.goalsDiff}</td>
+          <td class="std-pts">${team.points}</td>
+          <td><div class="form-cell">${formDots}</div></td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    });
+
+    document.getElementById('standings-body').innerHTML = html;
+  } catch(e) {
+    document.getElementById('standings-body').innerHTML = `<div class="state-msg">⚠ Could not load standings<br><small style="color:var(--muted);font-size:9px">${e.message}</small></div>`;
+  }
+}
+
+function loadAll() {
+  // Clear cache on manual refresh
+  Object.keys(cache).forEach(k => delete cache[k]);
+  allFixtures = [];
+  document.getElementById('fixtures-body').innerHTML = '<div class="state-msg"><div class="spinner"></div>Loading…</div>';
+  document.getElementById('standings-body').innerHTML = '<div class="state-msg"><div class="spinner"></div>Loading…</div>';
+  document.getElementById('round-filter').innerHTML = '';
+
+  const now = new Date();
+  document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'});
+
+  loadFixtures();
+  loadStandings();
+}
+
+loadAll();
+
+// Auto-refresh every 5 minutes
+setInterval(loadAll, 5 * 60 * 1000);
+</script>
 </body>
 </html>
